@@ -1,4 +1,4 @@
-# Boomerang App
+# Boomerang
 
 I built this app because I wanted a super simple way to remind my future self of ideas I had the in the past.
 
