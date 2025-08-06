@@ -137,6 +137,9 @@ class ProcessWindow(QMainWindow):
                 self.text_edit.insertPlainText('\n')
             else:
                 self.toggle_edit()
+        elif event.key() == Qt.Key_Escape:
+            # Always allow Escape to close the window
+            self.close()
         else:
             super().keyPressEvent(event)
 
