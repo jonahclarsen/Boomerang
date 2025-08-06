@@ -35,7 +35,7 @@ if __name__ == '__main__':
     tray.setVisible(True)
 
     menu = QMenu()
-    bring_back_action = QAction("Bring it Back")
+    bring_back_action = QAction("Bring it back")
     log_new_action = QAction("Log New Idea")
     backup_now_action = QAction("Backup Now")
     options_action = QAction("Options")
