@@ -4,6 +4,9 @@ from PySide6.QtWidgets import (QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPu
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt, QEvent
 import platform
+from idea_manager import load_idea, save_idea, delete_idea, postpone_idea, create_new_idea, list_due_ideas
+
+
 if platform.system() == 'Darwin':
     try:
         from AppKit import NSApp, NSApplicationActivationPolicyRegular, NSApplicationActivationPolicyAccessory
@@ -17,8 +20,6 @@ def _show_in_dock():
 def _hide_from_dock():
     if NSApp:
         NSApp.setActivationPolicy_(NSApplicationActivationPolicyAccessory)
-
-from idea_manager import load_idea, save_idea, delete_idea, postpone_idea, create_new_idea, list_due_ideas
 
 class PostponeDialog(QDialog):
     def __init__(self, parent=None):
@@ -241,6 +242,8 @@ class AddIdeaWindow(QMainWindow):
     def __init__(self, ideas_folder, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Log New Idea")
+        # Make window stay on top
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.ideas_folder = ideas_folder
         self.days_str = ''
         self.state = 'edit'  # 'edit' or 'days'
