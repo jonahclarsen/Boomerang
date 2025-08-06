@@ -4,9 +4,9 @@ import traceback
 
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QMessageBox, QFileDialog)
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtNetwork import QLocalServer, QLocalSocket
+from PySide6.QtNetwork import QLocalServer
 
-from idea_manager import load_options, get_ideas_folder, set_ideas_folder, list_due_ideas
+from idea_manager import load_options, save_options, get_ideas_folder, set_ideas_folder, list_due_ideas, start_backup_thread, perform_backup
 from ui import ProcessWindow, AddIdeaWindow, OptionsWindow
 def handle_exception(exc_type, exc_value, exc_traceback):
     error_msg = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
@@ -37,11 +37,15 @@ if __name__ == '__main__':
     menu = QMenu()
     bring_back_action = QAction("Bring it Back")
     log_new_action = QAction("Log New Idea")
+    backup_now_action = QAction("Backup Now")
     options_action = QAction("Options")
     quit_action = QAction("Quit")
     menu.addAction(bring_back_action)
     menu.addAction(log_new_action)
+    menu.addSeparator()
+    menu.addAction(backup_now_action)
     menu.addAction(options_action)
+    menu.addSeparator()
     menu.addAction(quit_action)
     tray.setContextMenu(menu)
 
@@ -96,10 +100,17 @@ if __name__ == '__main__':
             print(e)
             pass
 
+    def backup_now():
+        perform_backup(options, show_prompts=True)
+
     def open_options():
-        dialog = OptionsWindow(ideas_folder)
-        if dialog.exec() and dialog.selected_folder:
-            set_ideas_folder(options, dialog.selected_folder)
+        dialog = OptionsWindow(options)
+        if dialog.exec():
+            # Save updated options
+            save_options(options)
+            # Update ideas_folder if it changed
+            if dialog.selected_folder:
+                ideas_folder = dialog.selected_folder
 
     # ------- IPC server for global hotkey -------
     ipc_server = QLocalServer()
@@ -127,8 +138,12 @@ if __name__ == '__main__':
 
     bring_back_action.triggered.connect(open_process_window)
     log_new_action.triggered.connect(open_add_window)
+    backup_now_action.triggered.connect(backup_now)
     options_action.triggered.connect(open_options)
     quit_action.triggered.connect(app.quit)
+
+    # Start backup thread
+    start_backup_thread(options)
 
     print("Boomerang app started")
     sys.exit(app.exec()) 

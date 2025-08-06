@@ -4,6 +4,8 @@ import json
 import datetime
 import traceback
 import shutil
+import threading
+import time
 
 from PySide6.QtWidgets import QMessageBox
 
@@ -121,4 +123,102 @@ def create_new_idea(ideas_folder, text, days):
     except Exception as e:
         print(f"Error creating new idea: {e}\n{traceback.format_exc()}")
         QMessageBox.critical(None, "Error", f"Failed to create new idea: {e}\n{traceback.format_exc()}")
-        return None 
+        return None
+
+# Backup functionality
+def should_backup(options):
+    """Check if backup is due based on last backup time and interval"""
+    backup_folder = options.get('backup_folder')
+    if not backup_folder:
+        return False
+        
+    interval_days = options.get('backup_interval_days', 7)
+    last_backup = options.get('last_backup_time', 0)
+    
+    # Check if 12+ hours have passed since last backup check
+    current_time = time.time()
+    if current_time - last_backup < 12 * 3600:  # 12 hours in seconds
+        return False
+        
+    # Check if backup is due based on interval
+    last_backup_date = options.get('last_backup_date')
+    if not last_backup_date:
+        return True
+        
+    try:
+        last_date = datetime.datetime.strptime(last_backup_date, '%Y%m%d').date()
+        days_since = (datetime.date.today() - last_date).days
+        return days_since >= interval_days
+    except ValueError:
+        return True
+
+def perform_backup(options, show_prompts=True):
+    """Perform backup if conditions are met"""
+    backup_folder = options.get('backup_folder')
+    ideas_folder = options.get('ideas_folder')
+    
+    if not backup_folder or not ideas_folder:
+        print("Backup skipped: backup_folder or ideas_folder not set")
+        return False
+        
+    # Check if backup folder exists
+    if not os.path.exists(backup_folder):
+        if show_prompts:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                None, 
+                "Create Backup Folder?", 
+                f"Backup folder '{backup_folder}' does not exist. Create it?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return False
+        try:
+            os.makedirs(backup_folder, exist_ok=True)
+            print(f"Created backup folder: {backup_folder}")
+        except Exception as e:
+            print(f"Failed to create backup folder: {e}")
+            if show_prompts:
+                QMessageBox.critical(None, "Backup Error", f"Failed to create backup folder: {e}")
+            return False
+    
+    # Create today's backup folder
+    today_str = datetime.date.today().strftime('%Y%m%d')
+    today_backup = os.path.join(backup_folder, today_str)
+    
+    if os.path.exists(today_backup):
+        print(f"Backup already exists for today: {today_backup}")
+        return False
+        
+    try:
+        # Copy ideas folder to backup
+        shutil.copytree(ideas_folder, today_backup)
+        print(f"Backup completed: {today_backup}")
+        
+        # Update last backup info
+        options['last_backup_date'] = today_str
+        options['last_backup_time'] = time.time()
+        save_options(options)
+        
+        return True
+    except Exception as e:
+        print(f"Backup failed: {e}")
+        if show_prompts:
+            QMessageBox.critical(None, "Backup Error", f"Backup failed: {e}")
+        return False
+
+def start_backup_thread(options):
+    """Start background thread to check for backups every 12 hours"""
+    def backup_worker():
+        while True:
+            time.sleep(12 * 3600)  # Wait 12 hours
+            try:
+                current_options = load_options()
+                if should_backup(current_options):
+                    perform_backup(current_options, show_prompts=True)
+            except Exception as e:
+                print(f"Backup thread error: {e}")
+    
+    backup_thread = threading.Thread(target=backup_worker, daemon=True)
+    backup_thread.start()
+    print("Backup thread started") 

@@ -1,6 +1,6 @@
 import datetime
 
-from PySide6.QtWidgets import (QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QDialog, QFileDialog, QMessageBox)
+from PySide6.QtWidgets import (QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QLabel, QDialog, QFileDialog, QMessageBox, QSpinBox)
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtCore import Qt, QEvent
 import platform
@@ -378,21 +378,75 @@ class AddIdeaWindow(QMainWindow):
         self.close()
 
 class OptionsWindow(QDialog):
-    def __init__(self, current_folder, parent=None):
+    def __init__(self, options, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Options")
+        self.options = options
+        self.selected_folder = None
+        self.selected_backup_folder = None
+        
         layout = QVBoxLayout()
-        self.folder_label = QLabel(f"Current Ideas Folder: {current_folder or 'Not set'}")
-        browse_btn = QPushButton("Browse")
+        
+        # Ideas folder
+        current_folder = options.get('ideas_folder', 'Not set')
+        self.folder_label = QLabel(f"Ideas Folder: {current_folder}")
+        browse_btn = QPushButton("Browse Ideas Folder")
         browse_btn.clicked.connect(self.browse_folder)
         layout.addWidget(self.folder_label)
         layout.addWidget(browse_btn)
+        
+        # Backup settings
+        layout.addWidget(QLabel(""))  # Spacer
+        layout.addWidget(QLabel("Backup Settings:"))
+        
+        # Backup folder
+        current_backup = options.get('backup_folder', 'Not set')
+        self.backup_label = QLabel(f"Backup Folder: {current_backup}")
+        backup_browse_btn = QPushButton("Browse Backup Folder")
+        backup_browse_btn.clicked.connect(self.browse_backup_folder)
+        layout.addWidget(self.backup_label)
+        layout.addWidget(backup_browse_btn)
+        
+        # Backup interval
+        interval_layout = QHBoxLayout()
+        interval_layout.addWidget(QLabel("Backup every:"))
+        self.interval_spinbox = QSpinBox()
+        self.interval_spinbox.setMinimum(1)
+        self.interval_spinbox.setMaximum(365)
+        self.interval_spinbox.setValue(options.get('backup_interval_days', 7))
+        self.interval_spinbox.setSuffix(" days")
+        interval_layout.addWidget(self.interval_spinbox)
+        layout.addLayout(interval_layout)
+        
+        # Save/Cancel buttons
+        button_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        cancel_btn = QPushButton("Cancel")
+        save_btn.clicked.connect(self.save_options)
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addWidget(save_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
         self.setLayout(layout)
-        self.selected_folder = None
 
     def browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Ideas Folder")
         if folder:
             self.selected_folder = folder
-            self.folder_label.setText(f"Current Ideas Folder: {folder}")
-            self.accept() 
+            self.folder_label.setText(f"Ideas Folder: {folder}")
+
+    def browse_backup_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select Backup Folder")
+        if folder:
+            self.selected_backup_folder = folder
+            self.backup_label.setText(f"Backup Folder: {folder}")
+
+    def save_options(self):
+        # Update options dict
+        if self.selected_folder:
+            self.options['ideas_folder'] = self.selected_folder
+        if self.selected_backup_folder:
+            self.options['backup_folder'] = self.selected_backup_folder
+        self.options['backup_interval_days'] = self.interval_spinbox.value()
+        self.accept() 
