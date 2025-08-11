@@ -67,6 +67,8 @@ class ProcessWindow(QMainWindow):
     def __init__(self, ideas_folder, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Process Ideas")
+        # Make window stay on top
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.ideas_folder = ideas_folder
         self.due_ideas = list_due_ideas(ideas_folder)  # From idea_manager
         self.current_index = 0
